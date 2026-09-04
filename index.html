@@ -83,7 +83,6 @@
     </div>
 
     <div class="input-box">
-        <!-- onkeypress イベントで Enter キー入力を検知します -->
         <input type="text" id="textInput" placeholder="指示や質問を入力 (Enterで送信)" onkeypress="handleKeyPress(event)">
         <button onclick="sendText()">送信</button>
         <button onclick="startListening()">🎤 声で話す</button>
@@ -98,14 +97,22 @@
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        // キーボードの Enter キー判定処理
+        // 都市の緯度・経度データ（API不要で地点を指定するため）
+        const cityCoordinates = {
+            "東京": { lat: 35.6895, lon: 139.6917 },
+            "大阪": { lat: 34.6937, lon: 135.5023 },
+            "名古屋": { lat: 35.1815, lon: 136.9064 },
+            "札幌": { lat: 43.0621, lon: 141.3544 },
+            "福岡": { lat: 33.5904, lon: 130.4017 },
+            "横浜": { lat: 35.4437, lon: 139.6380 },
+            "京都": { lat: 35.0116, lon: 135.7681 },
+            "沖縄": { lat: 26.2124, lon: 127.6809 }
+        };
+
         function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendText();
-            }
+            if (event.key === 'Enter') sendText();
         }
 
-        // 音声入力開始処理
         function startListening() {
             if (!SpeechRecognition) {
                 alert("お使いのブラウザは音声認識に対応していません。テキスト入力を使用してください。");
@@ -129,7 +136,6 @@
             };
         }
 
-        // テキスト送信処理
         function sendText() {
             const input = document.getElementById('textInput');
             if (input.value) {
@@ -138,76 +144,109 @@
             }
         }
 
-        // 入力解析＆ハヤトの思考処理
-        function processInput(userText) {
+        async function processInput(userText) {
             logDiv.innerText = "あなた: " + userText;
             statusDiv.innerText = "ANALYZING...";
             mapContainer.style.display = "none";
 
-            setTimeout(() => {
-                let reply = "";
+            let reply = "";
 
-                // 1. 天気判定
-                if (userText.includes("天気")) {
-                    const area = userText.replace(/の?天気(教えて|は)?/g, "").trim() || "現在地付近";
-                    reply = `「${area}」の気象データを解析中だ。画面上の別タブで詳細情報を展開した。確認しろ。`;
-                    window.open(`https://weathernews.jp/onebox/search?q=${encodeURIComponent(area)}`, '_blank');
-                }
-                // 2. タイマー判定
-                else if (userText.includes("タイマー") || userText.includes("計って")) {
-                    const match = userText.match(/(\d+)(分|秒)/);
-                    if (match) {
-                        const num = parseInt(match[1]);
-                        const unit = match[2];
-                        const ms = unit === "分" ? num * 60000 : num * 1000;
-                        reply = `了解。${num}${unit}のカウントダウンを開始した。時間になれば通知する。集中しろ。`;
-                        setTimeout(() => {
-                            const alarmText = `時間だ。${num}${unit}が経過した。次のタスクへ移行しろ。`;
-                            logDiv.innerText = "ハヤト: " + alarmText;
-                            speakResponse(alarmText);
-                        }, ms);
-                    } else {
-                        reply = "時間を正しく指定しろ。「3分タイマー」や「30秒タイマー」のように入力するんだ。";
+            // 1. 天気判定（リアルタイム気温取得機能を追加）
+            if (userText.includes("天気") || userText.includes("気温")) {
+                let targetCity = "東京"; // デフォルト
+                for (let city in cityCoordinates) {
+                    if (userText.includes(city)) {
+                        targetCity = city;
+                        break;
                     }
                 }
-                // 3. 調べ物・検索判定
-                else if (userText.includes("調べ") || userText.includes("検索") || userText.includes("教えて")) {
-                    const keyword = userText.replace(/を?調べ(て|る)?|を?検索(して)?|について?教えて/g, "").trim();
-                    if (keyword) {
-                        reply = `ターゲット情報「${keyword}」に関するデータベースを照会した。ブラウザの検索結果を確認しろ。`;
-                        window.open(`https://www.google.com/search?q=${encodeURIComponent(keyword)}`, '_blank');
-                    } else {
-                        reply = "何を調べるつもりだ？キーワードを指定しろ。";
-                    }
-                }
-                // 4. ナビゲーション判定
-                else if (userText.includes("ナビ") || userText.includes("行き方") || userText.includes("ルート")) {
-                    const dest = userText.replace(/への?(ナビ|行き方|ルート)|まで(の?ナビ|行きたい)/g, "").trim();
-                    reply = `目的地「${dest}」への最適ルートを算出中だ。ナビゲーションマップを起動する。`;
-                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
-                }
-                // 5. マップ表示判定
-                else if (userText.includes("マップ") || userText.includes("地図") || userText.includes("場所")) {
-                    const loc = userText.replace(/の?(マップ|地図|場所)|を表示(して)?/g, "").trim();
-                    reply = `「${loc}」周辺の衛星イメージおよびマップデータを画面上に展開した。視認しろ。`;
-                    mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed`;
-                    mapContainer.style.display = "block";
-                }
-                // 6. 計算処理
-                else if (tryCalculate(userText) !== null) {
-                    const calcResult = tryCalculate(userText);
-                    reply = `計算完了だ。算出されたデータ数値は ${calcResult} となっている。`;
-                }
-                // 7. ハヤトとの会話
-                else {
-                    reply = getHayatoCharacterResponse(userText);
-                }
 
-                logDiv.innerText = "ハヤト: " + reply;
-                statusDiv.innerText = "RESPONDING...";
-                speakResponse(reply);
+                statusDiv.innerText = "FETCHING WEATHER...";
+                const weatherData = await fetchWeather(targetCity);
+                
+                if (weatherData) {
+                    reply = `「${targetCity}」の気象データだ。現在の天気は「${weatherData.weatherText}」、気温は ${weatherData.temp}度となっている。確認しろ。`;
+                } else {
+                    reply = `「${targetCity}」の気象データ取得に失敗した。気象サイトを確認しろ。`;
+                    window.open(`https://weathernews.jp/onebox/search?q=${encodeURIComponent(targetCity)}`, '_blank');
+                }
+            }
+            // 2. タイマー判定
+            else if (userText.includes("タイマー") || userText.includes("計って")) {
+                const match = userText.match(/(\d+)(分|秒)/);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    const unit = match[2];
+                    const ms = unit === "分" ? num * 60000 : num * 1000;
+                    reply = `了解。${num}${unit}のカウントダウンを開始した。時間になれば通知する。集中しろ。`;
+                    setTimeout(() => {
+                        const alarmText = `時間だ。${num}${unit}が経過した。次のタスクへ移行しろ。`;
+                        logDiv.innerText = "ハヤト: " + alarmText;
+                        speakResponse(alarmText);
+                    }, ms);
+                } else {
+                    reply = "時間を正しく指定しろ。「3分タイマー」や「30秒タイマー」のように入力するんだ。";
+                }
+            }
+            // 3. 調べ物・検索判定
+            else if (userText.includes("調べ") || userText.includes("検索") || userText.includes("教えて")) {
+                const keyword = userText.replace(/を?調べ(て|る)?|を?検索(して)?|について?教えて/g, "").trim();
+                if (keyword) {
+                    reply = `ターゲット情報「${keyword}」に関するデータベースを照会した。ブラウザの検索結果を確認しろ。`;
+                    window.open(`https://www.google.com/search?q=${encodeURIComponent(keyword)}`, '_blank');
+                } else {
+                    reply = "何を調べるつもりだ？キーワードを指定しろ。";
+                }
+            }
+            // 4. ナビゲーション判定
+            else if (userText.includes("ナビ") || userText.includes("行き方") || userText.includes("ルート")) {
+                const dest = userText.replace(/への?(ナビ|行き方|ルート)|まで(の?ナビ|行きたい)/g, "").trim();
+                reply = `目的地「${dest}」への最適ルートを算出中だ。ナビゲーションマップを起動する。`;
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
+            }
+            // 5. マップ表示判定
+            else if (userText.includes("マップ") || userText.includes("地図") || userText.includes("場所")) {
+                const loc = userText.replace(/の?(マップ|地図|場所)|を表示(して)?/g, "").trim();
+                reply = `「${loc}」周辺の衛星イメージおよびマップデータを画面上に展開した。視認しろ。`;
+                mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed`;
+                mapContainer.style.display = "block";
+            }
+            // 6. 計算処理
+            else if (tryCalculate(userText) !== null) {
+                const calcResult = tryCalculate(userText);
+                reply = `計算完了だ。算出されたデータ数値は ${calcResult} となっている。`;
+            }
+            // 7. ハヤトとの会話
+            else {
+                reply = getHayatoCharacterResponse(userText);
+            }
 
-            }, 400);
+            logDiv.innerText = "ハヤト: " + reply;
+            statusDiv.innerText = "RESPONDING...";
+            speakResponse(reply);
+        }
+
+        // 無料気象API（Open-Meteo）からリアルタイム気温を取得する関数
+        async function fetchWeather(cityName) {
+            try {
+                const coords = cityCoordinates[cityName] || cityCoordinates["東京"];
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                const temp = Math.round(data.current_weather.temperature);
+                const code = data.current_weather.weathercode;
+                
+                // 天気コードを日本語に変換
+                let weatherText = "晴れ";
+                if (code >= 1 && code <= 3) weatherText = "くもり";
+                else if (code >= 51 && code <= 67) weatherText = "雨";
+                else if (code >= 71) weatherText = "雪";
+
+                return { temp, weatherText };
+            } catch (e) {
+                return null;
+            }
         }
 
         // 計算ロジック
@@ -246,7 +285,7 @@
             }
         }
 
-        // ハヤト本人が低音ボイスで答えを話す処理
+        // 低音ボイスでの読み上げ
         function speakResponse(text) {
             core.classList.add('active');
             const uttr = new SpeechSynthesisUtterance(text);
