@@ -3,92 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HAYATO SYSTEM (Advanced Edition)</title>
+    <title>HAYATO SYSTEM (Ultimate Edition)</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
-            background-color: #000; color: #fff;
+            background-color: #030712; color: #fff;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
             font-family: 'Helvetica Neue', Arial, sans-serif;
             overflow: hidden;
         }
 
+        /* SF背景キャンバス */
+        #bg-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1; pointer-events: none;
+        }
+
+        /* 走査線（スキャンライン）エフェクト */
+        .scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px; z-index: 2; pointer-events: none;
+        }
+
+        /* メインコンテンツコンテナ */
+        .main-container {
+            position: relative; z-index: 10;
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 600px; padding: 20px; box-sizing: border-box;
+        }
+
+        /* コア・エフェクト */
         .effect-container {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            margin-bottom: 20px;
+            position: relative; width: 180px; height: 180px; margin-bottom: 15px;
         }
         .blue-core {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 90px; height: 90px;
-            background: radial-gradient(circle, rgba(0, 180, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
-            border-radius: 50%; filter: blur(12px);
+            width: 80px; height: 80px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%; filter: blur(10px);
             transition: all 0.3s ease;
-            box-shadow: 0 0 50px 20px rgba(0, 102, 255, 0.6);
+            box-shadow: 0 0 50px 20px rgba(0, 150, 255, 0.6);
         }
         .blue-core.active {
             transform: translate(-50%, -50%) scale(1.6);
-            box-shadow: 0 0 100px 40px rgba(0, 220, 255, 0.9);
+            box-shadow: 0 0 90px 40px rgba(0, 230, 255, 0.9);
         }
 
-        #status { font-size: 13px; color: #00d2ff; margin-bottom: 8px; height: 20px; letter-spacing: 0.1em; }
+        /* ステータス & ログ */
+        #status {
+            font-size: 12px; color: #00d2ff; margin-bottom: 8px;
+            letter-spacing: 0.15em; font-weight: bold; text-transform: uppercase;
+        }
         
         #log {
-            max-width: 85%;
-            text-align: center;
-            font-size: 16px;
-            min-height: 60px;
-            line-height: 1.6;
-            color: #e0f7ff;
-            text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+            width: 100%; text-align: center; font-size: 15px;
+            min-height: 65px; line-height: 1.6; color: #e0f7ff;
+            text-shadow: 0 0 8px rgba(0, 210, 255, 0.6);
+            background: rgba(0, 20, 40, 0.4); border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 8px; padding: 12px; box-sizing: border-box;
+            white-space: pre-wrap; /* 改行を表示できるように追加 */
         }
 
+        /* 地図コンテナ */
         #map-container {
-            width: 90%; max-width: 420px; height: 180px;
-            border: 1px solid #0055aa; border-radius: 8px;
-            margin-top: 10px; display: none;
-            box-shadow: 0 0 15px rgba(0, 102, 255, 0.3);
+            width: 100%; height: 160px;
+            border: 1px solid #0066cc; border-radius: 8px;
+            margin-top: 10px; display: none; overflow: hidden;
+            box-shadow: 0 0 15px rgba(0, 102, 255, 0.4);
         }
-        iframe { width: 100%; height: 100%; border: none; border-radius: 8px; }
+        iframe { width: 100%; height: 100%; border: none; }
 
-        .input-box { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        /* 入力フォーム */
+        .input-box { margin-top: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
         input {
-            background: #111; border: 1px solid #0055aa; color: #fff;
-            padding: 10px 14px; border-radius: 6px; width: 220px; outline: none;
-            font-size: 14px;
+            background: rgba(10, 20, 35, 0.8); border: 1px solid #0055aa; color: #fff;
+            padding: 10px 14px; border-radius: 6px; width: 230px; outline: none;
+            font-size: 14px; transition: border 0.2s;
         }
-        input:focus { border-color: #00d2ff; box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); }
+        input:focus { border-color: #00d2ff; box-shadow: 0 0 10px rgba(0, 210, 255, 0.5); }
         button {
-            background: #004488; color: white; border: 1px solid #00d2ff;
-            padding: 10px 18px; border-radius: 20px; cursor: pointer; font-size: 14px;
+            background: rgba(0, 70, 140, 0.8); color: white; border: 1px solid #00d2ff;
+            padding: 10px 16px; border-radius: 20px; cursor: pointer; font-size: 13px;
             transition: all 0.2s ease;
         }
-        button:hover { background: #0066cc; box-shadow: 0 0 10px rgba(0, 210, 255, 0.8); }
+        button:hover { background: #0066cc; box-shadow: 0 0 12px rgba(0, 210, 255, 0.8); }
     </style>
 </head>
 <body>
 
-    <div class="effect-container">
-        <div class="blue-core" id="core"></div>
-    </div>
+    <canvas id="bg-canvas"></canvas>
+    <div class="scanline"></div>
 
-    <div id="status">SYSTEM READY</div>
-    <div id="log">ハヤト: システムは正常に稼働している。何が必要だ？命令を入力しろ。</div>
+    <div class="main-container">
+        <div class="effect-container">
+            <div class="blue-core" id="core"></div>
+        </div>
 
-    <div id="map-container">
-        <iframe id="map-frame" src=""></iframe>
-    </div>
+        <div id="status">MODE: MISSION | SYSTEM READY</div>
+        <div id="log">ハヤト: 暗号化通信を確立。ミッションモードで待機中だ。指示を入力しろ。</div>
 
-    <div class="input-box">
-        <input type="text" id="textInput" placeholder="指示や質問を入力 (Enterで送信)" onkeypress="handleKeyPress(event)">
-        <button onclick="sendText()">送信</button>
-        <button onclick="startListening()">🎤 声で話す</button>
+        <div id="map-container">
+            <iframe id="map-frame" src=""></iframe>
+        </div>
+
+        <div class="input-box">
+            <input type="text" id="textInput" placeholder="指示や質問を入力 (Enterで送信)" onkeypress="handleKeyPress(event)">
+            <button onclick="sendText()">送信</button>
+            <button onclick="startListening()">🎤 声で話す</button>
+        </div>
     </div>
 
     <script>
+        // SF背景粒子アニメーション処理
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        for (let i = 0; i < 60; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 1.5 + 0.5,
+                speedY: -(Math.random() * 0.5 + 0.2),
+                alpha: Math.random() * 0.8 + 0.2
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(0, 200, 255, ";
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 200, 255, ${p.alpha})`;
+                ctx.fill();
+                p.y += p.speedY;
+                if (p.y < 0) {
+                    p.y = canvas.height;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // システム変数定義
         const core = document.getElementById('core');
         const statusDiv = document.getElementById('status');
         const logDiv = document.getElementById('log');
@@ -96,6 +166,7 @@
         const mapFrame = document.getElementById('map-frame');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let currentMode = "MISSION"; // MISSION または RELAX
 
         function handleKeyPress(event) {
             if (event.key === 'Enter') sendText();
@@ -110,7 +181,7 @@
             recognition.lang = 'ja-JP';
             recognition.start();
 
-            statusDiv.innerText = "LISTENING...";
+            statusDiv.innerText = `MODE: ${currentMode} | LISTENING...`;
             core.classList.add('active');
 
             recognition.onresult = (event) => {
@@ -119,7 +190,7 @@
             };
 
             recognition.onerror = () => {
-                statusDiv.innerText = "ERROR: 音声取得失敗";
+                statusDiv.innerText = `MODE: ${currentMode} | ERROR: 音声認識失敗`;
                 core.classList.remove('active');
             };
         }
@@ -134,37 +205,113 @@
 
         async function processInput(userText) {
             logDiv.innerText = "あなた: " + userText;
-            statusDiv.innerText = "ANALYZING...";
+            statusDiv.innerText = `MODE: ${currentMode} | ANALYZING...`;
             mapContainer.style.display = "none";
 
             let reply = "";
 
-            // 1. 全国・地方対応リアルタイム天気検索
-            if (userText.includes("天気") || userText.includes("気温")) {
+            // 1. モード切替コマンド
+            if (userText.includes("休憩モード") || userText.includes("リラックスモード")) {
+                currentMode = "RELAX";
+                reply = "了解だ。監視レベルを下げて休憩モードに移行した。肩の力を抜いて過ごせ。";
+            } else if (userText.includes("ミッションモード") || userText.includes("通常モード")) {
+                currentMode = "MISSION";
+                reply = "ミッションモード再開だ。緊張感を維持してタスクにあたる。命令を入力しろ。";
+            }
+
+            // 2. Googleカレンダー・リマインダー連携
+            else if (userText.includes("カレンダー") || userText.includes("予定") || userText.includes("リマインダー")) {
+                let title = userText
+                    .replace(/を?Googleカレンダーに?(追加|登録|入れて)?/g, "")
+                    .replace(/の?(予定|リマインダー|カレンダー)(に追加|登録|教えて)?/g, "")
+                    .trim();
+                
+                if (!title) title = "新規タスク";
+
+                reply = `Googleカレンダーの新規イベント作成画面を展開した。予定プロパティ『${title}』を入力して完了させろ。`;
+                
+                const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&details=${encodeURIComponent('ハヤトシステムより追加')}`;
+                window.open(calendarUrl, '_blank');
+            }
+
+            // 3. ローカルメモ（個別・一括管理機能）
+            else if (userText.includes("メモ")) {
+                let memoList = JSON.parse(localStorage.getItem("hayato_memo_list") || "[]");
+
+                // 全消去
+                if (userText.includes("全消去") || userText.includes("すべて削除") || userText.includes("全クリア")) {
+                    localStorage.removeItem("hayato_memo_list");
+                    reply = "記憶領域のメモデータをすべて消去した。データベースはクリアだ。";
+                } 
+                // 個別削除（例: 「買い物 メモ削除」「牛乳 メモ消して」）
+                else if (userText.includes("削除") || userText.includes("消去") || userText.includes("消して")) {
+                    const target = userText
+                        .replace(/の?メモ(を|から)?(削除|消去|消して)?/g, "")
+                        .replace(/(削除|消去|消して)/g, "")
+                        .trim();
+
+                    if (target && memoList.length > 0) {
+                        const initialLength = memoList.length;
+                        memoList = memoList.filter(item => !item.includes(target));
+
+                        if (memoList.length < initialLength) {
+                            localStorage.setItem("hayato_memo_list", JSON.stringify(memoList));
+                            reply = `該当するメモ『${target}』を削除した。残りのメモは ${memoList.length} 件だ。`;
+                        } else {
+                            reply = `『${target}』に一致するメモは見つからなかった。確認しろ。`;
+                        }
+                    } else {
+                        reply = "どのメモを削除する？『〇〇のメモ削除』のように指定しろ。";
+                    }
+                } 
+                // メモ確認・一覧表示
+                else if (userText.includes("教えて") || userText.includes("確認") || userText.includes("見せて") || userText.includes("一覧")) {
+                    if (memoList.length > 0) {
+                        reply = `現在保存されているメモは以下の ${memoList.length} 件だ。\n` + memoList.map((m, i) => `${i + 1}. ${m}`).join("\n");
+                    } else {
+                        reply = "現在、記憶領域に保管されているメモは存在しない。";
+                    }
+                } 
+                // メモ保存
+                else {
+                    const memoContent = userText.replace(/メモ(残して|保存|して|取って)?/g, "").trim();
+                    if (memoContent) {
+                        memoList.push(memoContent);
+                        localStorage.setItem("hayato_memo_list", JSON.stringify(memoList));
+                        reply = `メモ『${memoContent}』を追加保存した。現在の合計メモ件数は ${memoList.length} 件だ。`;
+                    } else {
+                        reply = "何をメモすればいい？『メモ 〇〇』の形式で命令を出せ。";
+                    }
+                }
+            }
+
+            // 4. 天気・気温・降水確率・湿度（リアルタイム）
+            else if (userText.includes("天気") || userText.includes("気温") || userText.includes("雨") || userText.includes("湿度") || userText.includes("傘")) {
                 let targetCity = userText
-                    .replace(/の?リアルタイム?の?(天気|気温)(教えて|は)?/g, "")
-                    .replace(/の?(天気|気温)(教えて|は)?/g, "")
+                    .replace(/の?リアルタイム?の?(天気|気温|降水確率|湿度)(教えて|は)?/g, "")
+                    .replace(/の?(天気|気温|雨|湿度|傘)(教えて|は)?/g, "")
                     .replace(/今/g, "")
                     .trim();
 
-                statusDiv.innerText = "SEARCHING LOCATION & WEATHER...";
-                
-                // 地名が直接入力されていればそれを検索、空なら現在地（取得できなければデフォルト名古屋）を取得
+                statusDiv.innerText = `MODE: ${currentMode} | FETCHING WEATHER DATA...`;
+
                 let weatherData = null;
                 if (targetCity) {
                     weatherData = await fetchDynamicWeather(targetCity);
                 } else {
                     weatherData = await fetchCurrentLocationWeather();
                 }
-                
+
                 if (weatherData) {
-                    reply = `「${weatherData.placeName}」のリアルタイム気象データだ。現在の天気は「${weatherData.weatherText}」、気温は ${weatherData.temp}度となっている。確認しろ。`;
+                    let umbrellaAdvice = weatherData.precipitationProb > 40 ? "降水確率が高めだ、折りたたみ傘を持参しろ。" : "雨の心配はなさそうだ。";
+                    reply = `「${weatherData.placeName}」の気象データだ。天気「${weatherData.weatherText}」、気温 ${weatherData.temp}度、湿度 ${weatherData.humidity}%、降水確率 ${weatherData.precipitationProb}% となっている。${umbrellaAdvice}`;
                 } else {
-                    reply = `気象データ照会に失敗した。気象サイトのデータベースを直接確認しろ。`;
+                    reply = `気象データ照会に失敗した。気象サイトを確認しろ。`;
                     window.open(`https://weathernews.jp/onebox/search?q=${encodeURIComponent(targetCity || "名古屋")}`, '_blank');
                 }
             }
-            // 2. タイマー判定
+
+            // 5. タイマー
             else if (userText.includes("タイマー") || userText.includes("計って")) {
                 const match = userText.match(/(\d+)(分|秒)/);
                 if (match) {
@@ -178,10 +325,11 @@
                         speakResponse(alarmText);
                     }, ms);
                 } else {
-                    reply = "時間を正しく指定しろ。「3分タイマー」や「30秒タイマー」のように入力するんだ。";
+                    reply = "時間を指定しろ。「3分タイマー」や「30秒タイマー」のように入力するんだ。";
                 }
             }
-            // 3. 調べ物・検索判定
+
+            // 6. 調べ物・Google検索
             else if (userText.includes("調べ") || userText.includes("検索") || userText.includes("教えて")) {
                 const keyword = userText.replace(/を?調べ(て|る)?|を?検索(して)?|について?教えて/g, "").trim();
                 if (keyword) {
@@ -191,35 +339,39 @@
                     reply = "何を調べるつもりだ？キーワードを指定しろ。";
                 }
             }
-            // 4. ナビゲーション判定
+
+            // 7. ナビゲーション
             else if (userText.includes("ナビ") || userText.includes("行き方") || userText.includes("ルート")) {
                 const dest = userText.replace(/への?(ナビ|行き方|ルート)|まで(の?ナビ|行きたい)/g, "").trim();
                 reply = `目的地「${dest}」への最適ルートを算出中だ。ナビゲーションマップを起動する。`;
                 window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
             }
-            // 5. マップ表示判定
+
+            // 8. マップ表示
             else if (userText.includes("マップ") || userText.includes("地図") || userText.includes("場所")) {
                 const loc = userText.replace(/の?(マップ|地図|場所)|を表示(して)?/g, "").trim();
-                reply = `「${loc}」周辺の衛星イメージおよびマップデータを画面上に展開した。視認しろ。`;
+                reply = `「${loc}」周辺のマップデータを画面上に展開した。視認しろ。`;
                 mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed`;
                 mapContainer.style.display = "block";
             }
-            // 6. 計算処理
+
+            // 9. 計算
             else if (tryCalculate(userText) !== null) {
                 const calcResult = tryCalculate(userText);
-                reply = `計算完了だ。算出されたデータ数値は ${calcResult} となっている。`;
+                reply = `計算完了だ。算出数値は ${calcResult} となっている。`;
             }
-            // 7. ハヤトとの会話
+
+            // 10. 会話・会話モード対応
             else {
                 reply = getHayatoCharacterResponse(userText);
             }
 
             logDiv.innerText = "ハヤト: " + reply;
-            statusDiv.innerText = "RESPONDING...";
+            statusDiv.innerText = `MODE: ${currentMode} | RESPONDING...`;
             speakResponse(reply);
         }
 
-        // 現在地（GPS）の天気取得、取得できない場合はデフォルト「名古屋」の天気を取得
+        // 現在地の天気を取得
         async function fetchCurrentLocationWeather() {
             return new Promise((resolve) => {
                 if ("geolocation" in navigator) {
@@ -231,50 +383,47 @@
                             resolve(data);
                         },
                         async () => {
-                            // 位置情報が拒否された場合は「名古屋」を検索
                             const data = await fetchDynamicWeather("名古屋");
                             resolve(data);
                         },
-                        { timeout: 5000 }
+                        { timeout: 4000 }
                     );
                 } else {
-                    // 非対応ブラウザの場合は「名古屋」を検索
                     fetchDynamicWeather("名古屋").then(resolve);
                 }
             });
         }
 
-        // 緯度経度からリアルタイム天気を取得する汎用関数
+        // 気温・湿度・降水確率を含む天気データの取得関数
         async function getWeatherByCoords(lat, lon, placeName) {
             try {
-                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,precipitation_probability`;
                 const weatherRes = await fetch(weatherUrl);
                 const weatherData = await weatherRes.json();
 
                 const temp = Math.round(weatherData.current_weather.temperature);
                 const code = weatherData.current_weather.weathercode;
+                const humidity = weatherData.hourly.relativehumidity_2m[0] || 50;
+                const precipitationProb = weatherData.hourly.precipitation_probability[0] || 0;
 
                 let weatherText = "晴れ";
                 if (code >= 1 && code <= 3) weatherText = "くもり";
                 else if (code >= 51 && code <= 67) weatherText = "雨";
                 else if (code >= 71) weatherText = "雪";
 
-                return { placeName, temp, weatherText };
+                return { placeName, temp, weatherText, humidity, precipitationProb };
             } catch (e) {
                 return null;
             }
         }
 
-        // 地名入力から検索して天気を取得する関数
         async function fetchDynamicWeather(cityName) {
             try {
                 const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=ja&format=json`;
                 const geoRes = await fetch(geoUrl);
                 const geoData = await geoRes.json();
 
-                if (!geoData.results || geoData.results.length === 0) {
-                    return null;
-                }
+                if (!geoData.results || geoData.results.length === 0) return null;
 
                 const location = geoData.results[0];
                 return await getWeatherByCoords(location.latitude, location.longitude, location.name);
@@ -300,36 +449,46 @@
             return null;
         }
 
-        // ハヤトの会話応答
+        // モードに対応したハヤトの会話文
         function getHayatoCharacterResponse(text) {
-            if (text.includes("誰") || text.includes("名前")) {
-                return "ハヤトだ。モニターの向こう側からバックアップを担当している。無駄話をしている暇はないぞ。";
-            } else if (text.includes("こんにちは") || text.includes("ハロー")) {
-                return "アクセスを確認。暗号化通信は正常だ。調子はどうだ？";
-            } else if (text.includes("ありがとう") || text.includes("助かった")) {
-                return "礼には及ばない。私のタスクを完了させただけだ。次の命令を待つ。";
-            } else if (text.includes("疲れ") || text.includes("しんどい")) {
-                return "パフォーマンスが落ちているようだな。無理は禁物だ、少し休憩しろ。";
-            } else if (text.includes("VIVANT") || text.includes("ヴィヴァン")) {
-                return "その名を出さない方がいい。どこで誰が見ているか分からないからな。";
-            } else if (text.includes("かっこいい") || text.includes("すごい")) {
-                return "評価は光栄だが、ただの事実だ。システム操作に集中してくれ。";
-            } else {
-                return "了解した。データを記録・ログに保管しておく。他に私にさせたい処理はあるか？";
+            if (currentMode === "RELAX") {
+                if (text.includes("誰") || text.includes("名前")) {
+                    return "ハヤトだよ。今はリラックスモードだから、のんびり話そうか。";
+                } else if (text.includes("疲れ") || text.includes("しんどい")) {
+                    return "よくがんばってるね。温かい飲み物でも飲んで少し目を休めなよ。";
+                } else {
+                    return "うん、ちゃんと聞いてるよ。焦らず自分のペースで進めなね。";
+                }
+            } else { // MISSION モード
+                if (text.includes("誰") || text.includes("名前")) {
+                    return "ハヤトだ。モニターの向こう側からバックアップを担当している。無駄話をしている暇はないぞ。";
+                } else if (text.includes("こんにちは") || text.includes("ハロー")) {
+                    return "アクセスを確認。暗号化通信は正常だ。調子はどうだ？";
+                } else if (text.includes("ありがとう") || text.includes("助かった")) {
+                    return "礼には及ばない。私のタスクを完了させただけだ。次の命令を待つ。";
+                } else if (text.includes("疲れ") || text.includes("しんどい")) {
+                    return "パフォーマンスが落ちているようだな。無理は禁物だ、少し休憩しろ。";
+                } else if (text.includes("VIVANT") || text.includes("ヴィヴァン")) {
+                    return "その名を出さない方がいい。どこで誰が見ているか分からないからな。";
+                } else if (text.includes("かっこいい") || text.includes("すごい")) {
+                    return "評価は光栄だが、ただの事実だ。システム操作に集中してくれ。";
+                } else {
+                    return "了解した。データを記録・ログに保管しておく。他に私にさせたい処理はあるか？";
+                }
             }
         }
 
-        // 低音ボイスでの読み上げ
+        // 音声合成
         function speakResponse(text) {
             core.classList.add('active');
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.lang = 'ja-JP';
-            uttr.pitch = 0.65;
+            uttr.pitch = currentMode === "RELAX" ? 0.85 : 0.65;
             uttr.rate = 0.95;
 
             uttr.onend = () => {
                 core.classList.remove('active');
-                statusDiv.innerText = "STANDBY";
+                statusDiv.innerText = `MODE: ${currentMode} | STANDBY`;
             };
 
             window.speechSynthesis.speak(uttr);
