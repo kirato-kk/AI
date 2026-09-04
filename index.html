@@ -3,38 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HAYATO AI SYSTEM</title>
+    <title>HAYATO SYSTEM (Advanced Edition)</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             background-color: #000; color: #fff;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
         }
-        .effect-container { position: relative; width: 220px; height: 220px; margin-bottom: 20px; }
+
+        .effect-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin-bottom: 20px;
+        }
         .blue-core {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 100px; height: 100px;
+            width: 90px; height: 90px;
             background: radial-gradient(circle, rgba(0, 180, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
-            border-radius: 50%; filter: blur(10px);
+            border-radius: 50%; filter: blur(12px);
             transition: all 0.3s ease;
-            box-shadow: 0 0 40px 15px rgba(0, 102, 255, 0.6);
+            box-shadow: 0 0 50px 20px rgba(0, 102, 255, 0.6);
         }
         .blue-core.active {
             transform: translate(-50%, -50%) scale(1.6);
-            box-shadow: 0 0 90px 35px rgba(0, 220, 255, 0.9);
+            box-shadow: 0 0 100px 40px rgba(0, 220, 255, 0.9);
         }
-        #status { font-size: 13px; color: #00d2ff; margin-bottom: 10px; height: 20px; }
-        #log { max-width: 85%; text-align: center; font-size: 15px; min-height: 60px; line-height: 1.5; }
-        .input-box { margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        input { background: #111; border: 1px solid #0055aa; color: #fff; padding: 8px; border-radius: 5px; text-align: center; width: 240px; }
+
+        #status { font-size: 13px; color: #00d2ff; margin-bottom: 8px; height: 20px; letter-spacing: 0.1em; }
+        
+        #log {
+            max-width: 85%;
+            text-align: center;
+            font-size: 16px;
+            min-height: 60px;
+            line-height: 1.6;
+            color: #e0f7ff;
+            text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+        }
+
+        #map-container {
+            width: 90%; max-width: 420px; height: 180px;
+            border: 1px solid #0055aa; border-radius: 8px;
+            margin-top: 10px; display: none;
+            box-shadow: 0 0 15px rgba(0, 102, 255, 0.3);
+        }
+        iframe { width: 100%; height: 100%; border: none; border-radius: 8px; }
+
+        .input-box { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        input {
+            background: #111; border: 1px solid #0055aa; color: #fff;
+            padding: 10px 14px; border-radius: 6px; width: 220px; outline: none;
+            font-size: 14px;
+        }
+        input:focus { border-color: #00d2ff; box-shadow: 0 0 8px rgba(0, 210, 255, 0.5); }
         button {
             background: #004488; color: white; border: 1px solid #00d2ff;
-            padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 15px;
+            padding: 10px 18px; border-radius: 20px; cursor: pointer; font-size: 14px;
+            transition: all 0.2s ease;
         }
-        button:hover { background: #0066cc; }
+        button:hover { background: #0066cc; box-shadow: 0 0 10px rgba(0, 210, 255, 0.8); }
     </style>
 </head>
 <body>
@@ -43,100 +75,188 @@
         <div class="blue-core" id="core"></div>
     </div>
 
-    <div id="status">APIキーを入力してください</div>
-    <div id="log">...</div>
+    <div id="status">SYSTEM READY</div>
+    <div id="log">ハヤト: システムは正常に稼働している。何が必要だ？命令を入力しろ。</div>
+
+    <div id="map-container">
+        <iframe id="map-frame" src=""></iframe>
+    </div>
 
     <div class="input-box">
-        <input type="password" id="apiKey" placeholder="Gemini APIキーを入力">
-        <button onclick="startListening()">🎤 声で送信する</button>
+        <!-- onkeypress イベントで Enter キー入力を検知します -->
+        <input type="text" id="textInput" placeholder="指示や質問を入力 (Enterで送信)" onkeypress="handleKeyPress(event)">
+        <button onclick="sendText()">送信</button>
+        <button onclick="startListening()">🎤 声で話す</button>
     </div>
 
     <script>
         const core = document.getElementById('core');
         const statusDiv = document.getElementById('status');
         const logDiv = document.getElementById('log');
+        const mapContainer = document.getElementById('map-container');
+        const mapFrame = document.getElementById('map-frame');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+        // キーボードの Enter キー判定処理
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendText();
+            }
+        }
+
+        // 音声入力開始処理
         function startListening() {
-            const apiKey = document.getElementById('apiKey').value;
-            if (!apiKey) {
-                alert("GeminiのAPIキーを入力してください");
-                return;
-            }
-
             if (!SpeechRecognition) {
-                alert("お使いのブラウザは音声認識に対応していません（Chromeを推奨）");
+                alert("お使いのブラウザは音声認識に対応していません。テキスト入力を使用してください。");
                 return;
             }
-
             const recognition = new SpeechRecognition();
             recognition.lang = 'ja-JP';
-
             recognition.start();
-            statusDiv.innerText = "音声を聞き取り中...";
+
+            statusDiv.innerText = "LISTENING...";
             core.classList.add('active');
 
-            recognition.onresult = async (event) => {
+            recognition.onresult = (event) => {
                 const userSpeech = event.results[0][0].transcript;
-                logDiv.innerText = "あなた: " + userSpeech;
-                statusDiv.innerText = "AIが思考中・計算中...";
-                core.classList.remove('active');
-
-                // 本物のGemini AIに問い合わせ
-                await fetchGeminiAI(userSpeech, apiKey);
+                processInput(userSpeech);
             };
 
             recognition.onerror = () => {
-                statusDiv.innerText = "音声を聞き取れませんでした";
+                statusDiv.innerText = "ERROR: 音声取得失敗";
                 core.classList.remove('active');
             };
         }
 
-        async function fetchGeminiAI(userText, apiKey) {
-            const systemPrompt = "あなたはVIVANTのハヤトです。クールで優秀なエンジニア・アナリストとして振る舞ってください。計算や分析の要求には迅速かつ正確に答え、口調は冷静かつ端的に返答してください。";
-            
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: systemPrompt },
-                                { text: userText }
-                            ]
-                        }]
-                    })
-                });
-
-                const data = await response.json();
-                const aiReply = data.candidates[0].content.parts[0].text;
-
-                logDiv.innerText = "ハヤト: " + aiReply;
-                statusDiv.innerText = "応答中...";
-
-                // 声で喋らせる
-                speakResponse(aiReply);
-
-            } catch (error) {
-                logDiv.innerText = "エラー: AIからの応答取得に失敗しました。";
-                statusDiv.innerText = "エラー";
+        // テキスト送信処理
+        function sendText() {
+            const input = document.getElementById('textInput');
+            if (input.value) {
+                processInput(input.value);
+                input.value = '';
             }
         }
 
+        // 入力解析＆ハヤトの思考処理
+        function processInput(userText) {
+            logDiv.innerText = "あなた: " + userText;
+            statusDiv.innerText = "ANALYZING...";
+            mapContainer.style.display = "none";
+
+            setTimeout(() => {
+                let reply = "";
+
+                // 1. 天気判定
+                if (userText.includes("天気")) {
+                    const area = userText.replace(/の?天気(教えて|は)?/g, "").trim() || "現在地付近";
+                    reply = `「${area}」の気象データを解析中だ。画面上の別タブで詳細情報を展開した。確認しろ。`;
+                    window.open(`https://weathernews.jp/onebox/search?q=${encodeURIComponent(area)}`, '_blank');
+                }
+                // 2. タイマー判定
+                else if (userText.includes("タイマー") || userText.includes("計って")) {
+                    const match = userText.match(/(\d+)(分|秒)/);
+                    if (match) {
+                        const num = parseInt(match[1]);
+                        const unit = match[2];
+                        const ms = unit === "分" ? num * 60000 : num * 1000;
+                        reply = `了解。${num}${unit}のカウントダウンを開始した。時間になれば通知する。集中しろ。`;
+                        setTimeout(() => {
+                            const alarmText = `時間だ。${num}${unit}が経過した。次のタスクへ移行しろ。`;
+                            logDiv.innerText = "ハヤト: " + alarmText;
+                            speakResponse(alarmText);
+                        }, ms);
+                    } else {
+                        reply = "時間を正しく指定しろ。「3分タイマー」や「30秒タイマー」のように入力するんだ。";
+                    }
+                }
+                // 3. 調べ物・検索判定
+                else if (userText.includes("調べ") || userText.includes("検索") || userText.includes("教えて")) {
+                    const keyword = userText.replace(/を?調べ(て|る)?|を?検索(して)?|について?教えて/g, "").trim();
+                    if (keyword) {
+                        reply = `ターゲット情報「${keyword}」に関するデータベースを照会した。ブラウザの検索結果を確認しろ。`;
+                        window.open(`https://www.google.com/search?q=${encodeURIComponent(keyword)}`, '_blank');
+                    } else {
+                        reply = "何を調べるつもりだ？キーワードを指定しろ。";
+                    }
+                }
+                // 4. ナビゲーション判定
+                else if (userText.includes("ナビ") || userText.includes("行き方") || userText.includes("ルート")) {
+                    const dest = userText.replace(/への?(ナビ|行き方|ルート)|まで(の?ナビ|行きたい)/g, "").trim();
+                    reply = `目的地「${dest}」への最適ルートを算出中だ。ナビゲーションマップを起動する。`;
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
+                }
+                // 5. マップ表示判定
+                else if (userText.includes("マップ") || userText.includes("地図") || userText.includes("場所")) {
+                    const loc = userText.replace(/の?(マップ|地図|場所)|を表示(して)?/g, "").trim();
+                    reply = `「${loc}」周辺の衛星イメージおよびマップデータを画面上に展開した。視認しろ。`;
+                    mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed`;
+                    mapContainer.style.display = "block";
+                }
+                // 6. 計算処理
+                else if (tryCalculate(userText) !== null) {
+                    const calcResult = tryCalculate(userText);
+                    reply = `計算完了だ。算出されたデータ数値は ${calcResult} となっている。`;
+                }
+                // 7. ハヤトとの会話
+                else {
+                    reply = getHayatoCharacterResponse(userText);
+                }
+
+                logDiv.innerText = "ハヤト: " + reply;
+                statusDiv.innerText = "RESPONDING...";
+                speakResponse(reply);
+
+            }, 400);
+        }
+
+        // 計算ロジック
+        function tryCalculate(text) {
+            try {
+                let norm = text
+                    .replace(/たす|\+/g, '+')
+                    .replace(/ひく|-/g, '-')
+                    .replace(/かける|×|\*/g, '*')
+                    .replace(/わる|÷|\//g, '/')
+                    .replace(/は|=/g, '');
+                let expr = norm.match(/[0-9\.\+\-\*\/\(\)]+/g)?.join('');
+                if (expr && expr.length >= 3) {
+                    return Function(`'use strict'; return (${expr})`)();
+                }
+            } catch (e) { return null; }
+            return null;
+        }
+
+        // ハヤトの会話応答
+        function getHayatoCharacterResponse(text) {
+            if (text.includes("誰") || text.includes("名前")) {
+                return "ハヤトだ。モニターの向こう側からバックアップを担当している。無駄話をしている暇はないぞ。";
+            } else if (text.includes("こんにちは") || text.includes("ハロー")) {
+                return "アクセスを確認。暗号化通信は正常だ。調子はどうだ？";
+            } else if (text.includes("ありがとう") || text.includes("助かった")) {
+                return "礼には及ばない。私のタスクを完了させただけだ。次の命令を待つ。";
+            } else if (text.includes("疲れ") || text.includes("しんどい")) {
+                return "パフォーマンスが落ちているようだな。無理は禁物だ、少し休憩しろ。";
+            } else if (text.includes("VIVANT") || text.includes("ヴィヴァン")) {
+                return "その名を出さない方がいい。どこで誰が見ているか分からないからな。";
+            } else if (text.includes("かっこいい") || text.includes("すごい")) {
+                return "評価は光栄だが、ただの事実だ。システム操作に集中してくれ。";
+            } else {
+                return "了解した。データを記録・ログに保管しておく。他に私にさせたい処理はあるか？";
+            }
+        }
+
+        // ハヤト本人が低音ボイスで答えを話す処理
         function speakResponse(text) {
             core.classList.add('active');
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.lang = 'ja-JP';
-            uttr.pitch = 0.7; // ハヤト風の低音
-            uttr.rate = 0.95;  // 落ち着いた速度
+            uttr.pitch = 0.65;
+            uttr.rate = 0.95;
 
             uttr.onend = () => {
                 core.classList.remove('active');
-                statusDiv.innerText = "待機中";
+                statusDiv.innerText = "STANDBY";
             };
 
             window.speechSynthesis.speak(uttr);
