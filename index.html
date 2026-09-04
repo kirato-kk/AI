@@ -6,62 +6,33 @@
     <title>HAYATO AI SYSTEM</title>
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            color: #fff;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000; color: #fff;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
             font-family: sans-serif;
         }
-
-        /* 中央のエフェクト */
-        .effect-container {
-            position: relative;
-            width: 250px;
-            height: 250px;
-            margin-bottom: 20px;
-        }
-
+        .effect-container { position: relative; width: 220px; height: 220px; margin-bottom: 20px; }
         .blue-core {
-            position: absolute;
-            top: 50%;
-            left: 50%;
+            position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 100px;
-            height: 100px;
-            background: radial-gradient(circle, rgba(0, 150, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
-            border-radius: 50%;
-            filter: blur(10px);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100px; height: 100px;
+            background: radial-gradient(circle, rgba(0, 180, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%; filter: blur(10px);
+            transition: all 0.3s ease;
             box-shadow: 0 0 40px 15px rgba(0, 102, 255, 0.6);
         }
-
-        /* 声に反応したときのスタイル */
         .blue-core.active {
-            transform: translate(-50%, -50%) scale(1.5);
-            box-shadow: 0 0 80px 30px rgba(0, 200, 255, 0.9);
+            transform: translate(-50%, -50%) scale(1.6);
+            box-shadow: 0 0 90px 35px rgba(0, 220, 255, 0.9);
         }
-
-        /* チャットログ表示エリア */
-        #status { font-size: 14px; color: #00d2ff; margin-bottom: 10px; height: 20px; }
-        #log { max-width: 80%; text-align: center; font-size: 16px; min-height: 50px; }
-
-        /* 操作ボタン */
+        #status { font-size: 13px; color: #00d2ff; margin-bottom: 10px; height: 20px; }
+        #log { max-width: 85%; text-align: center; font-size: 15px; min-height: 60px; line-height: 1.5; }
+        .input-box { margin-top: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        input { background: #111; border: 1px solid #0055aa; color: #fff; padding: 8px; border-radius: 5px; text-align: center; width: 240px; }
         button {
-            background: #004488;
-            color: white;
-            border: 1px solid #00d2ff;
-            padding: 10px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 15px;
+            background: #004488; color: white; border: 1px solid #00d2ff;
+            padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 15px;
         }
         button:hover { background: #0066cc; }
     </style>
@@ -72,44 +43,48 @@
         <div class="blue-core" id="core"></div>
     </div>
 
-    <div id="status">ボタンを押して話しかけてください</div>
+    <div id="status">APIキーを入力してください</div>
     <div id="log">...</div>
 
-    <button onclick="startListening()">🎤 声で話しかける</button>
+    <div class="input-box">
+        <input type="password" id="apiKey" placeholder="Gemini APIキーを入力">
+        <button onclick="startListening()">🎤 声で送信する</button>
+    </div>
 
     <script>
         const core = document.getElementById('core');
         const statusDiv = document.getElementById('status');
         const logDiv = document.getElementById('log');
 
-        // 音声認識の設定 (Web Speech API)
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if (!SpeechRecognition) {
-            statusDiv.innerText = "お使いのブラウザは音声認識に対応していません（Chrome推奨）";
-        } else {
+        function startListening() {
+            const apiKey = document.getElementById('apiKey').value;
+            if (!apiKey) {
+                alert("GeminiのAPIキーを入力してください");
+                return;
+            }
+
+            if (!SpeechRecognition) {
+                alert("お使いのブラウザは音声認識に対応していません（Chromeを推奨）");
+                return;
+            }
+
             const recognition = new SpeechRecognition();
             recognition.lang = 'ja-JP';
 
-            function startListening() {
-                recognition.start();
-                statusDiv.innerText = "聞き取り中...";
-                core.classList.add('active'); // 話しかけるとモヤモヤが大きく光る
-            }
+            recognition.start();
+            statusDiv.innerText = "音声を聞き取り中...";
+            core.classList.add('active');
 
-            recognition.onresult = (event) => {
+            recognition.onresult = async (event) => {
                 const userSpeech = event.results[0][0].transcript;
                 logDiv.innerText = "あなた: " + userSpeech;
-                statusDiv.innerText = "解析中...";
+                statusDiv.innerText = "AIが思考中・計算中...";
                 core.classList.remove('active');
 
-                // 音声入力に対して返答を生成（仮の処理）
-                replyAsHayato(userSpeech);
-            };
-
-            recognition.onspeechend = () => {
-                recognition.stop();
-                core.classList.remove('active');
+                // 本物のGemini AIに問い合わせ
+                await fetchGeminiAI(userSpeech, apiKey);
             };
 
             recognition.onerror = () => {
@@ -118,28 +93,46 @@
             };
         }
 
-        // ハヤト風の返答＆音声再生
-        function replyAsHayato(text) {
-            // 本来はここにAPI呼び出し（GPT等）を入れます
-            let responseText = "了解した。データを分析する。";
+        async function fetchGeminiAI(userText, apiKey) {
+            const systemPrompt = "あなたはVIVANTのハヤトです。クールで優秀なエンジニア・アナリストとして振る舞ってください。計算や分析の要求には迅速かつ正確に答え、口調は冷静かつ端的に返答してください。";
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-            if (text.includes("こんにちは")) {
-                responseText = "アクセスを確認。調子はどうだ？";
-            } else if (text.includes("誰")) {
-                responseText = "ハヤトだ。バックアップシステムとして待機している。";
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: systemPrompt },
+                                { text: userText }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const aiReply = data.candidates[0].content.parts[0].text;
+
+                logDiv.innerText = "ハヤト: " + aiReply;
+                statusDiv.innerText = "応答中...";
+
+                // 声で喋らせる
+                speakResponse(aiReply);
+
+            } catch (error) {
+                logDiv.innerText = "エラー: AIからの応答取得に失敗しました。";
+                statusDiv.innerText = "エラー";
             }
+        }
 
-            logDiv.innerText = "ハヤト: " + responseText;
-            statusDiv.innerText = "応答中...";
-
-            // モヤモヤを喋っている間光らせる
+        function speakResponse(text) {
             core.classList.add('active');
-
-            // ブラウザの音声合成機能で喋らせる
-            const uttr = new SpeechSynthesisUtterance(responseText);
+            const uttr = new SpeechSynthesisUtterance(text);
             uttr.lang = 'ja-JP';
-            uttr.pitch = 0.8; // 低めの声にする（ハヤト風）
-            uttr.rate = 0.9;  // 少し落ち着いたトーンで喋らせる
+            uttr.pitch = 0.7; // ハヤト風の低音
+            uttr.rate = 0.95;  // 落ち着いた速度
 
             uttr.onend = () => {
                 core.classList.remove('active');
