@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAYATO AI SYSTEM</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #fff;
+            font-family: sans-serif;
+        }
+
+        /* 中央のエフェクト */
+        .effect-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin-bottom: 20px;
+        }
+
+        .blue-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(0, 150, 255, 0.9) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%;
+            filter: blur(10px);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0 40px 15px rgba(0, 102, 255, 0.6);
+        }
+
+        /* 声に反応したときのスタイル */
+        .blue-core.active {
+            transform: translate(-50%, -50%) scale(1.5);
+            box-shadow: 0 0 80px 30px rgba(0, 200, 255, 0.9);
+        }
+
+        /* チャットログ表示エリア */
+        #status { font-size: 14px; color: #00d2ff; margin-bottom: 10px; height: 20px; }
+        #log { max-width: 80%; text-align: center; font-size: 16px; min-height: 50px; }
+
+        /* 操作ボタン */
+        button {
+            background: #004488;
+            color: white;
+            border: 1px solid #00d2ff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        button:hover { background: #0066cc; }
+    </style>
+</head>
+<body>
+
+    <div class="effect-container">
+        <div class="blue-core" id="core"></div>
+    </div>
+
+    <div id="status">ボタンを押して話しかけてください</div>
+    <div id="log">...</div>
+
+    <button onclick="startListening()">🎤 声で話しかける</button>
+
+    <script>
+        const core = document.getElementById('core');
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+
+        // 音声認識の設定 (Web Speech API)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            statusDiv.innerText = "お使いのブラウザは音声認識に対応していません（Chrome推奨）";
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+
+            function startListening() {
+                recognition.start();
+                statusDiv.innerText = "聞き取り中...";
+                core.classList.add('active'); // 話しかけるとモヤモヤが大きく光る
+            }
+
+            recognition.onresult = (event) => {
+                const userSpeech = event.results[0][0].transcript;
+                logDiv.innerText = "あなた: " + userSpeech;
+                statusDiv.innerText = "解析中...";
+                core.classList.remove('active');
+
+                // 音声入力に対して返答を生成（仮の処理）
+                replyAsHayato(userSpeech);
+            };
+
+            recognition.onspeechend = () => {
+                recognition.stop();
+                core.classList.remove('active');
+            };
+
+            recognition.onerror = () => {
+                statusDiv.innerText = "音声を聞き取れませんでした";
+                core.classList.remove('active');
+            };
+        }
+
+        // ハヤト風の返答＆音声再生
+        function replyAsHayato(text) {
+            // 本来はここにAPI呼び出し（GPT等）を入れます
+            let responseText = "了解した。データを分析する。";
+
+            if (text.includes("こんにちは")) {
+                responseText = "アクセスを確認。調子はどうだ？";
+            } else if (text.includes("誰")) {
+                responseText = "ハヤトだ。バックアップシステムとして待機している。";
+            }
+
+            logDiv.innerText = "ハヤト: " + responseText;
+            statusDiv.innerText = "応答中...";
+
+            // モヤモヤを喋っている間光らせる
+            core.classList.add('active');
+
+            // ブラウザの音声合成機能で喋らせる
+            const uttr = new SpeechSynthesisUtterance(responseText);
+            uttr.lang = 'ja-JP';
+            uttr.pitch = 0.8; // 低めの声にする（ハヤト風）
+            uttr.rate = 0.9;  // 少し落ち着いたトーンで喋らせる
+
+            uttr.onend = () => {
+                core.classList.remove('active');
+                statusDiv.innerText = "待機中";
+            };
+
+            window.speechSynthesis.speak(uttr);
+        }
+    </script>
+</body>
+</html>
